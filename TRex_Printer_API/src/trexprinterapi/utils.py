@@ -13,13 +13,50 @@ import logging
 
 from typing import Any, Callable
 
-TIMEOUT_CONNECT = 30
+TIMEOUT_CONNECT = 10
+TIMEOUT_TEST = 5
 BUFFER = 1024
 MAX_RETRY = 5
-TIMEOUT_AWAIT = 10
+MAX_TESTS = 10
+TIMEOUT_AWAIT = 30
 UNAVAILABLE = None
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def printer_check(ip:str, port:int) -> bool:
+    "returns True if printer currently recieves data. Else returns False"
+    printer = socket.socket()
+    printer.settimeout(TIMEOUT_TEST)
+    loop = asyncio.get_event_loop()
+
+    try:
+        await loop.sock_connect(printer, (ip, port))
+        recv = await loop.sock_recv(printer, BUFFER)
+
+        _LOGGER.debug("recieved for test: %s", recv)
+
+        clear = recv.decode().split('\r\n')
+        for string in clear:
+            if "ok" in string and "N" in string:
+                _LOGGER.info("Printer currently recieving data. Skip connection to printer")
+                return True
+        _LOGGER.info("printer currently connected to another program")
+
+    except OSError as err:
+        _LOGGER.error("Something wrong happend with the OS while testing the connection. We got errormsg: %s" ,err)
+    
+    except TimeoutError:
+        _LOGGER.info("Timeout while testing the printer, probably printer not connected to any other program")
+
+    except ConnectionRefusedError:
+        _LOGGER.warn("Could not connect to Server, probably a wrong ip or port or the printer is not running")
+
+    finally:
+        printer.close()
+
+    return False
+
 
 
 async def printer_call(ip:str, 
@@ -81,7 +118,16 @@ async def printer_recv(ip:str,
                        msg:list[str] ) -> dict[str:str]:
     """function to ensure that the connection responds in a reasonable time frame"""
     try:
-        data = await asyncio.wait_for(printer_call(ip, port, msg), timeout=TIMEOUT_AWAIT)
+        test = await asyncio.wait_for(printer_check(ip, port), timeout=TIMEOUT_AWAIT)
+    except asyncio.exceptions.TimeoutError:
+        _LOGGER.debug("Could not recieve data in given time. If this is the only message the printer is just not connected to any other program")
+        test = False
+
+    try:        
+        if not test:
+            data = await asyncio.wait_for(printer_call(ip, port, msg), timeout=TIMEOUT_AWAIT)
+        else:
+            data = {}
     except asyncio.exceptions.TimeoutError:
         _LOGGER.warning('Time out reached, probably printer is offline or a wrong message was send')
         data = {}

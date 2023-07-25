@@ -12,11 +12,10 @@ except ImportError:
     from utils import get_data
 
 
-logging.basicConfig(filename='trexprinterapi/API.log', 
-                    filemode='w',
-                    encoding='utf-8', 
-                    level=logging.INFO,
-                    format='%(asctime)s : %(name)-8s : %(levelname)-10s :: %(message)s')
+print(__name__)
+
+logging.getLogger('trexprinterapi').addHandler(logging.NullHandler())
+
 _LOGGER = logging.getLogger(__name__)
 
 
