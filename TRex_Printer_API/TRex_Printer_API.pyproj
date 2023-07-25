@@ -40,7 +40,9 @@
     <Folder Include="tests\" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="LICENSE" />
     <Content Include="pyproject.toml" />
+    <Content Include="README.md" />
     <Content Include="src\trexprinterapi\API.log" />
     <Content Include="src\trexprinterapi\__pycache__\API.cpython-310.pyc" />
     <Content Include="src\trexprinterapi\__pycache__\patterns.cpython-310.pyc" />
